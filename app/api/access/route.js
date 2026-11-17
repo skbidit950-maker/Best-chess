@@ -31,10 +31,11 @@ export async function POST(request) {
   }
 
   const response = NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } })
+  const secure = request.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production"
   response.cookies.set(ACCESS_COOKIE_NAME, createAccessSession(expectedKey), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure,
+    sameSite: secure ? "none" : "lax",
     path: "/",
     maxAge: ACCESS_SESSION_TTL_SECONDS,
   })

@@ -107,8 +107,10 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   <div class="metric"><div class="muted tiny">BEST MOVE</div><div class="best" id="bestMove">—</div><div class="tiny" id="bestLine">Best move arrow appears on the board.</div></div>
   <div class="row" style="margin:10px 0"><label class="toggle"><input id="mateMode" type="checkbox"> Find checkmate</label><label class="toggle"><input id="brilliantMode" type="checkbox"> Find brilliant moves</label></div>
   <div class="field"><label for="depthSelect">Analysis depth</label><select id="depthSelect"><option value="10">10 · Fast</option><option value="13" selected>13 · Balanced</option><option value="15">15 · Stronger</option><option value="17">17 · Slow</option></select></div>
+  <div class="metric"><div class="muted tiny">MOVE QUALITY</div><div class="row" style="margin-top:8px"><button id="rateMove" type="button">Rate last move</button><span id="moveRating" class="pill">Not rated</span></div><div id="moveRatingNote" class="tiny" style="margin-top:7px">Play a move, then ask the engine whether it was best, reasonable, or a mistake.</div></div>
+  <div class="metric"><div class="muted tiny">OPENING / GAMBIT</div><div id="gambitName" class="best" style="margin-top:7px;font-size:17px">No opening identified</div><div id="gambitNote" class="tiny" style="margin-top:5px">Play or load a game to identify a recognized gambit from its opening moves.</div></div>
   <div class="metric"><div class="muted tiny">CANDIDATE / TACTICAL NOTES</div><div id="notes" class="tiny" style="margin-top:7px">No analysis yet.</div></div>
-  <div class="tiny">Engine service: Stockfish Online API. Requires an internet connection. Do not submit private game data.</div>
+  <div class="tiny">Engine service: Stockfish Online API. Requires an internet connection. Board analysis uses the position entered here; it does not read other apps or live online games.</div>
  </section>
  <section id="tab-moves" hidden><h2>Move history</h2><div class="move-list" id="moveList">No moves yet.</div><div class="controls"><button id="copyPgn">Copy PGN</button></div></section>
  <section id="tab-position" hidden><h2>Position tools</h2>
@@ -144,7 +146,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
 (()=> {
  const $=id=>document.getElementById(id), files='abcdefgh', pieces={w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'},b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'}};
  if(!window.Chess){$('status').textContent='Could not load chess rules library. Check your internet connection and reload.';return;}
- let game=new Chess(), flipped=false, selected=null, legal=[], redoStack=[], lastMove=null, best=null, busy=false, analysisSide="w";
+ let game=new Chess(), flipped=false, selected=null, legal=[], redoStack=[], lastMove=null, ratedMove=null, best=null, busy=false, analysisSide="w";
  const startFen=game.fen();
  function squareName(r,c){return files[c]+(8-r)}
  function render(){
@@ -178,9 +180,74 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   if(effect==='flash'){target.classList.add('hit-flash');setTimeout(()=>target.classList.remove('hit-flash'),450);}
   if(effect==='pop'){const piece=target.querySelector('.piece');if(piece){piece.classList.add('hit-pop');setTimeout(()=>piece.classList.remove('hit-pop'),550);}}
  }
- function move(from,to){let result;try{result=game.move({from,to,promotion:'q'});}catch(e){result=null;}if(result){const captured=!!result.captured||String(result.flags||'').includes('e');lastMove={from,to};selected=null;legal=[];redoStack=[];best=null;$('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Position changed. Analyze again.';render();if(captured)playHit(to);return true;}return false;}
+ const gambitOpenings=[
+  ["King’s Gambit","e4 e5 f4"],["King’s Gambit Accepted","e4 e5 f4 exf4"],["King’s Gambit: Knight’s Gambit","e4 e5 f4 exf4 Nf3"],
+  ["King’s Gambit: Bishop’s Gambit","e4 e5 f4 exf4 Bc4"],["King’s Gambit: Cunningham Defense","e4 e5 f4 exf4 Nf3 Be7"],
+  ["Kieseritzky Gambit","e4 e5 f4 exf4 Nf3 g5 h4"],["Allgaier Gambit","e4 e5 f4 exf4 Nf3 g5 h4 g4 Ng5"],
+  ["Boden–Kieseritzky Gambit","e4 e5 f4 exf4 Bc4 Qh4+ Kf1"],["Muzio Gambit","e4 e5 f4 exf4 Nf3 g5 Bc4 g4 O-O"],["Falkbeer Countergambit","e4 e5 f4 d5"],
+  ["From Gambit","f4 e5"],["From Gambit Accepted","f4 e5 fxe5 d6"],["Bird’s Gambit","f4 d5 e4"],
+  ["Queen’s Gambit","d4 d5 c4"],["Queen’s Gambit Accepted","d4 d5 c4 dxc4"],["Albin Countergambit","d4 d5 c4 e5"],
+  ["Albin Countergambit: Lasker Trap","d4 d5 c4 e5 dxe5 d4 e3 Bb4+ Bd2 dxe3"],
+  ["Englund Gambit","d4 e5"],["English Gambit","d4 e5 dxe5 Nc6 Nf3 Qe7"],["Budapest Gambit","d4 Nf6 c4 e5"],
+  ["Fajarowicz Gambit","d4 Nf6 c4 e5 dxe5 Ne4"],["Budapest Gambit Accepted","d4 Nf6 c4 e5 dxe5 Ng4"],
+  ["Benko (Volga) Gambit","d4 Nf6 c4 c5 d5 b5"],["Benko Gambit Accepted","d4 Nf6 c4 c5 d5 b5 cxb5 a6"],
+  ["Blumenfeld Countergambit","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Bb4+ Bd2 Bxd2+ Qxd2 b5"],
+  ["Von Hennig–Schara Gambit","d4 d5 c4 e6 Nc3 c5 cxd5 cxd4"],
+  ["Semi-Slav Marshall Gambit","d4 d5 c4 c6 Nc3 e6 Nf3 Nf6 Bg5 h6 Bh4 dxc4 e4 g5 Bg3 b5"],
+  ["Blackmar Gambit","d4 d5 e4 dxe4 Nc3"],["Blackmar–Diemer Gambit","d4 d5 e4 dxe4 Nc3 Nf6 f3"],
+  ["Ryder Gambit","d4 d5 e4 dxe4 Nc3 Nf6 f3 exf3 Qxf3"],
+  ["Staunton Gambit","d4 f5 e4"],["Krejcik Gambit","d4 f5 g4"],["Tennison Gambit","Nf3 d5 e4"],
+  ["Catalan Gambit","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4"],["Réti Gambit","Nf3 d5 c4 d4 b4"],
+  ["Danish Gambit","e4 e5 d4 exd4 c3"],["Danish Gambit Accepted","e4 e5 d4 exd4 c3 dxc3"],
+  ["Danish Gambit Declined","e4 e5 d4 exd4 c3 d5"],["Danish Triple Gambit","e4 e5 d4 exd4 c3 dxc3 Bc4 cxb2 Bxb2"],
+  ["Göring Gambit","e4 e5 Nf3 Nc6 d4 exd4 c3"],["Göring Gambit Accepted","e4 e5 Nf3 Nc6 d4 exd4 c3 dxc3 Nxc3"],
+  ["Scotch Gambit","e4 e5 Nf3 Nc6 d4 exd4 Bc4"],["Max Lange Attack","e4 e5 Nf3 Nc6 d4 exd4 Bc4 Nf6 O-O Bc5 e5"],
+  ["Evans Gambit","e4 e5 Nf3 Nc6 Bc4 Bc5 b4"],["Evans Gambit Accepted","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3"],["Evans Gambit Declined","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bb6"],["Vienna Gambit","e4 e5 Nc3 Nf6 f4"],
+  ["Halloween Gambit","e4 e5 Nf3 Nc6 Nxe5"],["Urusov Gambit","e4 e5 Bc4 Nf6 d4"],
+  ["Jerome Gambit","e4 e5 Nf3 Nc6 Bc4 Bc5 Bxf7+"],["Latvian Gambit","e4 e5 Nf3 f5"],
+  ["Elephant Gambit","e4 e5 Nf3 d5"],["Philidor Countergambit","e4 e5 Nf3 d6 d4 f5"],
+  ["Ponziani Countergambit","e4 e5 Nf3 Nc6 c3 Nf6"],["Schliemann (Ruy Lopez) Gambit","e4 e5 Nf3 Nc6 Bb5 f5"],
+  ["Marshall Attack","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 O-O c3 d5"],
+  ["Stafford Gambit","e4 e5 Nf3 Nf6 Nxe5 Nc6"],["Cochrane Gambit","e4 e5 Nf3 Nf6 Nxe5 d6 Nxf7"],
+  ["Smith–Morra Gambit","e4 c5 d4 cxd4 c3"],["Smith–Morra Accepted","e4 c5 d4 cxd4 c3 dxc3 Nxc3"],
+  ["Sicilian Wing Gambit","e4 c5 b4"],["Sicilian Wing Gambit Accepted","e4 c5 b4 cxb4 a3"],
+  ["Sicilian Halasz Gambit","e4 c5 f4"],["French Wing Gambit","e4 e6 Nf3 d5 e5 c5 b4"],
+  ["French Wing Gambit Accepted","e4 e6 Nf3 d5 e5 c5 b4 cxb4"],
+  ["Milner–Barry Gambit","e4 e6 d4 d5 e5 c5 c3 Nc6 Bd3"],["Icelandic Gambit","e4 d5 exd5 Nf6 c4 e6"],
+  ["Portuguese Gambit","e4 d5 exd5 Nf6 d4 Bg4"],["Englund Gambit: Hartlaub–Charlick","d4 e5 dxe5 d6"],
+  ["Englund Gambit: Soller Variation","d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+"],
+  ["Blackburne Shilling Gambit","e4 e5 Nf3 Nc6 Bc4 Nd4 Nxe5 Qg5"],["Mikenas Gambit","c4 Nf6 Nc3 e6 e4"],
+  ["Rousseau Gambit","e4 e5 Nf3 Nc6 Bc4 f5"]
+ ].map(([name,line])=>({name,moves:line.split(" ").map(move=>move.replace(/[+#?!]+$/g,""))}));
+ function updateGambit(){
+  const history=game.history().map(move=>move.replace(/[+#?!]+$/g,""));
+  const match=gambitOpenings.filter(opening=>history.length>=opening.moves.length&&opening.moves.every((move,index)=>history[index]===move)).sort((a,b)=>b.moves.length-a.moves.length)[0];
+  $('gambitName').textContent=match?match.name:(history.length>=6?"No listed gambit detected":"Opening still developing");
+  $('gambitNote').textContent=match?"Recognized from the move history on this board.":(history.length>=6?"No match in the built-in catalog of common named gambit lines.":"Play or load more opening moves. Gambits are identified from move history, not a camera image.");
+ }
+ function move(from,to){let result;const beforeFen=game.fen();try{result=game.move({from,to,promotion:'q'});}catch(e){result=null;}if(result){const captured=!!result.captured||String(result.flags||'').includes('e');lastMove={from,to};ratedMove={beforeFen,afterFen:game.fen(),san:result.san,color:result.color};$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Press “Rate last move” to compare it with the engine’s top choice.';selected=null;legal=[];redoStack=[];best=null;$('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Position changed. Analyze again.';updateGambit();render();if(captured)playHit(to);return true;}return false;}
  function drawArrow(){const svg=$('arrows');svg.innerHTML='';if(!best||!best.from||!best.to)return;const order=flipped?7:0;function xy(s){let f=files.indexOf(s[0]),rank=8-Number(s[1]);if(flipped){f=7-f;rank=7-rank;}return{x:(f+.5)*100,y:(rank+.5)*100};}const a=xy(best.from),b=xy(best.to);const ns='http://www.w3.org/2000/svg';const defs=document.createElementNS(ns,'defs'),marker=document.createElementNS(ns,'marker');marker.setAttribute('id','head');marker.setAttribute('markerWidth','7');marker.setAttribute('markerHeight','7');marker.setAttribute('refX','5');marker.setAttribute('refY','3');marker.setAttribute('orient','auto');const path=document.createElementNS(ns,'path');path.setAttribute('d','M0,0 L6,3 L0,6 Z');path.setAttribute('fill','#26b987');marker.appendChild(path);defs.appendChild(marker);svg.appendChild(defs);const line=document.createElementNS(ns,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke','#19a879');line.setAttribute('stroke-width','9');line.setAttribute('stroke-linecap','round');line.setAttribute('marker-end','url(#head)');line.setAttribute('opacity','.92');svg.appendChild(line);}
  function uciMove(uci){if(!uci||uci.length<4)return null;return{from:uci.slice(0,2),to:uci.slice(2,4)}}
+ async function enginePosition(fen,depth){
+  const response=await fetch('https://stockfish.online/api/s/v2.php?fen='+encodeURIComponent(fen)+'&depth='+depth);
+  if(!response.ok)throw new Error('Engine service returned HTTP '+response.status);
+  const data=await response.json();if(!data.success)throw new Error(data.error||'Engine analysis failed');
+  return{data,move:uciMove(String(data.bestmove||'').match(/([a-h][1-8][a-h][1-8][qrbn]?)/i)?.[1]),evaluation:Number(data.evaluation)};
+ }
+ async function rateLastMove(){
+  if(busy)return;if(!ratedMove){$('moveRatingNote').textContent='Play a move first, then rate it.';return;}
+  busy=true;$('rateMove').disabled=true;$('moveRating').textContent='Checking…';$('moveRatingNote').textContent='Comparing this move with the engine’s best continuation…';
+  try{
+   const depth=Number($('depthSelect').value),[before,after]=await Promise.all([enginePosition(ratedMove.beforeFen,depth),enginePosition(ratedMove.afterFen,depth)]);
+   if(!before.move||!Number.isFinite(before.evaluation)||!Number.isFinite(after.evaluation))throw new Error('The engine did not return enough evaluation data.');
+   const matches=before.move.from===lastMove?.from&&before.move.to===lastMove?.to;
+   const loss=ratedMove.color==='w'?before.evaluation-after.evaluation:after.evaluation-before.evaluation;
+   const grade=matches?'Best move':loss<=0.5?'Good / regular':loss<=1.5?'Inaccuracy':loss<=3?'Mistake':'Worst / blunder';
+   $('moveRating').textContent=grade;$('moveRatingNote').textContent=matches?'Your '+ratedMove.san+' matches the engine’s top move.':`Your ${ratedMove.san} lost about ${Math.max(0,loss).toFixed(1)} pawns versus the engine’s top choice (depth ${depth}).`;
+   $('status').textContent='Move rating complete.';
+  }catch(error){$('moveRating').textContent='Could not rate';$('moveRatingNote').textContent=error.message+' Try again when the engine is available.';}
+  finally{busy=false;$('rateMove').disabled=false;}
+ }
  async function analyze(){
   if(busy)return;busy=true;$('analyze').disabled=true;$('status').textContent='Analyzing position…';$('notes').textContent='Contacting Stockfish engine…';
   const depth=Number($('depthSelect').value),parts=game.fen().split(' ');parts[1]=analysisSide;parts[3]='-';const fen=parts.join(' ');
@@ -220,15 +287,16 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
  $('chooseWhite').addEventListener('click',()=>chooseSide('w'));
  $('chooseBlack').addEventListener('click',()=>chooseSide('b'));
  $('analyze').addEventListener('click',analyze);
- $('undo').onclick=()=>{const m=game.undo();if(m){redoStack.push(m);lastMove=null;best=null;render();$('status').textContent='Move undone. Analyze again for this position.'}};
+ $('rateMove').addEventListener('click',rateLastMove);
+ $('undo').onclick=()=>{const m=game.undo();if(m){redoStack.push(m);lastMove=null;ratedMove=null;best=null;$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';updateGambit();render();$('status').textContent='Move undone. Analyze again for this position.'}};
  $('redo').onclick=()=>{const m=redoStack.pop();if(m){game.move(m);lastMove=m;best=null;render();}};
- $('reset').onclick=()=>{game.reset();redoStack=[];lastMove=null;best=null;selected=null;legal=[];$('eval').textContent='—';$('bestMove').textContent='—';$('notes').textContent='No analysis yet.';$('status').textContent='Starting position restored.';render();};
+ $('reset').onclick=()=>{game.reset();redoStack=[];lastMove=null;ratedMove=null;best=null;selected=null;legal=[];$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';$('eval').textContent='—';$('bestMove').textContent='—';$('notes').textContent='No analysis yet.';updateGambit();$('status').textContent='Starting position restored.';render();};
  $('flip').onclick=()=>{flipped=!flipped;$('orientation').textContent=flipped?'Black view':'White view';render();};
  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['analysis','moves','position','style'].forEach(t=>$( 'tab-'+t).hidden=t!==b.dataset.tab);});
- $('loadFen').onclick=()=>{const g=new Chess();if(g.load($('fen').value.trim())){game=g;redoStack=[];lastMove=null;best=null;render();$('status').textContent='FEN loaded.';}else $('status').textContent='Invalid FEN position.';};
+ $('loadFen').onclick=()=>{const g=new Chess();if(g.load($('fen').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='FEN loaded.';}else $('status').textContent='Invalid FEN position.';};
  $('copyFen').onclick=()=>navigator.clipboard?.writeText(game.fen()).then(()=>$('status').textContent='FEN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
  $('copyPgn').onclick=()=>navigator.clipboard?.writeText(game.pgn()).then(()=>$('status').textContent='PGN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
- $('loadPgn').onclick=()=>{const g=new Chess();if(g.load_pgn($('pgn').value.trim())){game=g;redoStack=[];lastMove=null;best=null;render();$('status').textContent='PGN loaded.';}else $('status').textContent='Could not parse PGN.';};
+ $('loadPgn').onclick=()=>{const g=new Chess();if(g.load_pgn($('pgn').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='PGN loaded.';}else $('status').textContent='Could not parse PGN.';};
  const styleDefaults={theme:'midnight',texture:'classic',shape:'square',pieceTexture:'classic',whitePieceColor:'#fffdf4',blackPieceColor:'#171717',hitEffect:'ring',hitColor:'#ffcf4a'};
  const styleDescriptions={
   midnight:'A cool dark board with a clean matte finish.',
@@ -269,7 +337,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
  ['themeSelect','textureSelect','shapeSelect','pieceTexture','whitePieceColor','blackPieceColor','hitEffect','hitColor'].forEach(id=>$(id).addEventListener('change',applyStyle));
  $('resetStyle').addEventListener('click',()=>{Object.entries(styleDefaults).forEach(([key,value])=>{const id=({theme:'themeSelect',texture:'textureSelect',shape:'shapeSelect'})[key]||key;$(id).value=value;});applyStyle();});
  loadStyle();
- chooseSide('w');render();$('status').textContent='Ready. Choose White or Black, then analyze the position.';
+ chooseSide('w');updateGambit();render();$('status').textContent='Ready. Choose White or Black, then analyze the position.';
 })();
 </script>
 </body>

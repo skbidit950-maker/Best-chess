@@ -180,18 +180,50 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   if(effect==='flash'){target.classList.add('hit-flash');setTimeout(()=>target.classList.remove('hit-flash'),450);}
   if(effect==='pop'){const piece=target.querySelector('.piece');if(piece){piece.classList.add('hit-pop');setTimeout(()=>piece.classList.remove('hit-pop'),550);}}
  }
+ const gambitOpenings=[
+  ["King’s Gambit","e4 e5 f4"],["King’s Gambit Accepted","e4 e5 f4 exf4"],["King’s Gambit: Knight’s Gambit","e4 e5 f4 exf4 Nf3"],
+  ["King’s Gambit: Bishop’s Gambit","e4 e5 f4 exf4 Bc4"],["King’s Gambit: Cunningham Defense","e4 e5 f4 exf4 Nf3 Be7"],
+  ["Kieseritzky Gambit","e4 e5 f4 exf4 Nf3 g5 h4"],["Allgaier Gambit","e4 e5 f4 exf4 Nf3 g5 h4 g4 Ng5"],
+  ["Boden–Kieseritzky Gambit","e4 e5 f4 exf4 Bc4 Qh4+ Kf1"],["Muzio Gambit","e4 e5 f4 exf4 Nf3 g5 Bc4 g4 O-O"],["Falkbeer Countergambit","e4 e5 f4 d5"],
+  ["From Gambit","f4 e5"],["From Gambit Accepted","f4 e5 fxe5 d6"],["Bird’s Gambit","f4 d5 e4"],
+  ["Queen’s Gambit","d4 d5 c4"],["Queen’s Gambit Accepted","d4 d5 c4 dxc4"],["Albin Countergambit","d4 d5 c4 e5"],
+  ["Albin Countergambit: Lasker Trap","d4 d5 c4 e5 dxe5 d4 e3 Bb4+ Bd2 dxe3"],
+  ["Englund Gambit","d4 e5"],["English Gambit","d4 e5 dxe5 Nc6 Nf3 Qe7"],["Budapest Gambit","d4 Nf6 c4 e5"],
+  ["Fajarowicz Gambit","d4 Nf6 c4 e5 dxe5 Ne4"],["Budapest Gambit Accepted","d4 Nf6 c4 e5 dxe5 Ng4"],
+  ["Benko (Volga) Gambit","d4 Nf6 c4 c5 d5 b5"],["Benko Gambit Accepted","d4 Nf6 c4 c5 d5 b5 cxb5 a6"],
+  ["Blumenfeld Countergambit","d4 Nf6 c4 e6 Nf3 b6 g3 Bb7 Bg2 Bb4+ Bd2 Bxd2+ Qxd2 b5"],
+  ["Von Hennig–Schara Gambit","d4 d5 c4 e6 Nc3 c5 cxd5 cxd4"],
+  ["Semi-Slav Marshall Gambit","d4 d5 c4 c6 Nc3 e6 Nf3 Nf6 Bg5 h6 Bh4 dxc4 e4 g5 Bg3 b5"],
+  ["Blackmar Gambit","d4 d5 e4 dxe4 Nc3"],["Blackmar–Diemer Gambit","d4 d5 e4 dxe4 Nc3 Nf6 f3"],
+  ["Ryder Gambit","d4 d5 e4 dxe4 Nc3 Nf6 f3 exf3 Qxf3"],
+  ["Staunton Gambit","d4 f5 e4"],["Krejcik Gambit","d4 f5 g4"],["Tennison Gambit","Nf3 d5 e4"],
+  ["Catalan Gambit","d4 Nf6 c4 e6 g3 d5 Bg2 dxc4"],["Réti Gambit","Nf3 d5 c4 d4 b4"],
+  ["Danish Gambit","e4 e5 d4 exd4 c3"],["Danish Gambit Accepted","e4 e5 d4 exd4 c3 dxc3"],
+  ["Danish Gambit Declined","e4 e5 d4 exd4 c3 d5"],["Danish Triple Gambit","e4 e5 d4 exd4 c3 dxc3 Bc4 cxb2 Bxb2"],
+  ["Göring Gambit","e4 e5 Nf3 Nc6 d4 exd4 c3"],["Göring Gambit Accepted","e4 e5 Nf3 Nc6 d4 exd4 c3 dxc3 Nxc3"],
+  ["Scotch Gambit","e4 e5 Nf3 Nc6 d4 exd4 Bc4"],["Max Lange Attack","e4 e5 Nf3 Nc6 d4 exd4 Bc4 Nf6 O-O Bc5 e5"],
+  ["Evans Gambit","e4 e5 Nf3 Nc6 Bc4 Bc5 b4"],["Evans Gambit Accepted","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3"],["Evans Gambit Declined","e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bb6"],["Vienna Gambit","e4 e5 Nc3 Nf6 f4"],
+  ["Halloween Gambit","e4 e5 Nf3 Nc6 Nxe5"],["Urusov Gambit","e4 e5 Bc4 Nf6 d4"],
+  ["Jerome Gambit","e4 e5 Nf3 Nc6 Bc4 Bc5 Bxf7+"],["Latvian Gambit","e4 e5 Nf3 f5"],
+  ["Elephant Gambit","e4 e5 Nf3 d5"],["Philidor Countergambit","e4 e5 Nf3 d6 d4 f5"],
+  ["Ponziani Countergambit","e4 e5 Nf3 Nc6 c3 Nf6"],["Schliemann (Ruy Lopez) Gambit","e4 e5 Nf3 Nc6 Bb5 f5"],
+  ["Marshall Attack","e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 O-O c3 d5"],
+  ["Stafford Gambit","e4 e5 Nf3 Nf6 Nxe5 Nc6"],["Cochrane Gambit","e4 e5 Nf3 Nf6 Nxe5 d6 Nxf7"],
+  ["Smith–Morra Gambit","e4 c5 d4 cxd4 c3"],["Smith–Morra Accepted","e4 c5 d4 cxd4 c3 dxc3 Nxc3"],
+  ["Sicilian Wing Gambit","e4 c5 b4"],["Sicilian Wing Gambit Accepted","e4 c5 b4 cxb4 a3"],
+  ["Sicilian Halasz Gambit","e4 c5 f4"],["French Wing Gambit","e4 e6 Nf3 d5 e5 c5 b4"],
+  ["French Wing Gambit Accepted","e4 e6 Nf3 d5 e5 c5 b4 cxb4"],
+  ["Milner–Barry Gambit","e4 e6 d4 d5 e5 c5 c3 Nc6 Bd3"],["Icelandic Gambit","e4 d5 exd5 Nf6 c4 e6"],
+  ["Portuguese Gambit","e4 d5 exd5 Nf6 d4 Bg4"],["Englund Gambit: Hartlaub–Charlick","d4 e5 dxe5 d6"],
+  ["Englund Gambit: Soller Variation","d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+"],
+  ["Blackburne Shilling Gambit","e4 e5 Nf3 Nc6 Bc4 Nd4 Nxe5 Qg5"],["Mikenas Gambit","c4 Nf6 Nc3 e6 e4"],
+  ["Rousseau Gambit","e4 e5 Nf3 Nc6 Bc4 f5"]
+ ].map(([name,line])=>({name,moves:line.split(" ").map(move=>move.replace(/[+#?!]+$/g,""))}));
  function updateGambit(){
-  const history=game.history();const openings=[
-   {name:"King’s Gambit",moves:["e4","e5","f4"]},{name:"Queen’s Gambit",moves:["d4","d5","c4"]},
-   {name:"Evans Gambit",moves:["e4","e5","Nf3","Nc6","Bc4","Bc5","b4"]},
-   {name:"Danish Gambit",moves:["e4","e5","d4","exd4","c3"]},
-   {name:"Smith–Morra Gambit",moves:["e4","c5","d4","cxd4","c3"]},
-   {name:"Latvian Gambit",moves:["e4","e5","Nf3","f5"]},
-   {name:"Englund Gambit",moves:["d4","e5"]}
-  ];
-  const match=openings.find(opening=>history.length>=opening.moves.length&&opening.moves.every((move,index)=>history[index]===move));
-  $('gambitName').textContent=match?match.name:(history.length>=4?"No listed gambit detected":"Opening still developing");
-  $('gambitNote').textContent=match?"Recognized from the opening move sequence on this board.":(history.length>=4?"This position does not match the gambit patterns currently recognized.":"Play a few opening moves; this checks the move history, not a camera image.");
+  const history=game.history().map(move=>move.replace(/[+#?!]+$/g,""));
+  const match=gambitOpenings.filter(opening=>history.length>=opening.moves.length&&opening.moves.every((move,index)=>history[index]===move)).sort((a,b)=>b.moves.length-a.moves.length)[0];
+  $('gambitName').textContent=match?match.name:(history.length>=6?"No listed gambit detected":"Opening still developing");
+  $('gambitNote').textContent=match?"Recognized from the move history on this board.":(history.length>=6?"No match in the built-in catalog of common named gambit lines.":"Play or load more opening moves. Gambits are identified from move history, not a camera image.");
  }
  function move(from,to){let result;const beforeFen=game.fen();try{result=game.move({from,to,promotion:'q'});}catch(e){result=null;}if(result){const captured=!!result.captured||String(result.flags||'').includes('e');lastMove={from,to};ratedMove={beforeFen,afterFen:game.fen(),san:result.san,color:result.color};$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Press “Rate last move” to compare it with the engine’s top choice.';selected=null;legal=[];redoStack=[];best=null;$('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Position changed. Analyze again.';updateGambit();render();if(captured)playHit(to);return true;}return false;}
  function drawArrow(){const svg=$('arrows');svg.innerHTML='';if(!best||!best.from||!best.to)return;const order=flipped?7:0;function xy(s){let f=files.indexOf(s[0]),rank=8-Number(s[1]);if(flipped){f=7-f;rank=7-rank;}return{x:(f+.5)*100,y:(rank+.5)*100};}const a=xy(best.from),b=xy(best.to);const ns='http://www.w3.org/2000/svg';const defs=document.createElementNS(ns,'defs'),marker=document.createElementNS(ns,'marker');marker.setAttribute('id','head');marker.setAttribute('markerWidth','7');marker.setAttribute('markerHeight','7');marker.setAttribute('refX','5');marker.setAttribute('refY','3');marker.setAttribute('orient','auto');const path=document.createElementNS(ns,'path');path.setAttribute('d','M0,0 L6,3 L0,6 Z');path.setAttribute('fill','#26b987');marker.appendChild(path);defs.appendChild(marker);svg.appendChild(defs);const line=document.createElementNS(ns,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke','#19a879');line.setAttribute('stroke-width','9');line.setAttribute('stroke-linecap','round');line.setAttribute('marker-end','url(#head)');line.setAttribute('opacity','.92');svg.appendChild(line);}

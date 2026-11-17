@@ -33,7 +33,7 @@ export default function AccessForm() {
       const requestedPath = new URLSearchParams(window.location.search).get("next")
       const destination = requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
         ? requestedPath
-        : "/"
+        : "/mate"
       window.location.replace(destination)
     } catch {
       setError("Unable to verify the key. Please try again.")

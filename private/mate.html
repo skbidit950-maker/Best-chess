@@ -51,6 +51,10 @@ body[data-theme="royal"]{--accent:#c59aff;--bg:#120d20;--line:#49336d;background
 .pieces-silver .piece{color:#dce8f2!important;-webkit-text-stroke:.8px #536477;text-shadow:0 0 7px #c8e6ff88,0 2px 3px #0009}
 .pieces-neon .piece{color:#8fffe0!important;-webkit-text-stroke:.8px #064e48;text-shadow:0 0 5px #5affd5,0 0 16px #26e9c2}
 .pieces-crystal .piece{color:#d9e9ff!important;-webkit-text-stroke:.8px #6c8fbd;text-shadow:0 0 7px #b8dcff,0 0 17px #77baff}
+.piece-accessory,.googly-eyes{position:absolute;z-index:4;pointer-events:none}.accessory-crown{width:.56em;height:.24em;top:0;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffe58c,#e5a928);clip-path:polygon(0 100%,0 28%,25% 56%,50% 0,75% 56%,100% 28%,100% 100%);filter:drop-shadow(0 1px 1px #0008)}.accessory-halo{width:.58em;height:.2em;top:0;left:50%;transform:translateX(-50%) rotate(-8deg);border:2px solid #f2c66d;border-radius:50%;box-shadow:0 0 5px #f2c66d88}.accessory-bowtie{width:.48em;height:.22em;top:66%;left:50%;transform:translateX(-50%);background:#ff728e;clip-path:polygon(0 50%,35% 0,35% 36%,65% 36%,65% 0,100% 50%,65% 100%,65% 64%,35% 64%,35% 100%)}
+.googly-eyes{top:13%;left:50%;transform:translateX(-50%);display:flex;gap:.025em}.googly-eye{position:relative;width:.27em;height:.27em;border:1px solid #171717;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0008}.googly-eye:after{content:"";position:absolute;left:32%;top:26%;width:43%;height:43%;border-radius:50%;background:#111;animation:googlyShake .22s ease-in-out infinite alternate}@keyframes googlyShake{from{transform:translate(-1px,0)}to{transform:translate(2px,1px)}}
+.piece-shake-once{animation:pieceShake .62s ease-in-out}@keyframes pieceShake{0%,100%{transform:translateX(0) rotate(0)}20%{transform:translateX(-3px) rotate(-5deg)}45%{transform:translateX(3px) rotate(4deg)}70%{transform:translateX(-2px) rotate(-3deg)}}
+@media(prefers-reduced-motion:reduce){.googly-eye:after{animation:none}.piece-shake-once{animation:none}}
 .hit-pop{animation:hitPop .48s ease-out}
 .hit-ring{position:absolute;inset:8%;border:4px solid var(--hit-color,#ffcf4a);border-radius:50%;pointer-events:none;animation:hitRing .55s ease-out forwards;z-index:2}
 @keyframes hitPop{0%{transform:scale(.65);filter:brightness(2.2)}45%{transform:scale(1.24)}100%{transform:scale(1)}}
@@ -147,6 +151,13 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
    <div class="field"><label for="blackPieceColor">Black piece color</label><input id="blackPieceColor" type="color" value="#171717"></div>
   </div>
   <div class="stylebox" style="margin-top:12px">
+   <h2>Piece accessories</h2>
+   <p class="tiny">Choose a look for every piece. Googly pupils wobble continuously; use the button to shake the whole set.</p>
+   <div class="field"><label for="accessorySelect">Accessory</label><select id="accessorySelect"><option value="none">No accessory</option><option value="crown">Crown</option><option value="halo">Halo</option><option value="bowtie">Bow tie</option></select></div>
+   <label class="toggle"><input id="googlyEyes" type="checkbox"> Googly eyes</label>
+   <div class="controls"><button id="shakePieces" type="button">Shake all pieces</button></div>
+  </div>
+  <div class="stylebox" style="margin-top:12px">
    <h2>Capture / hit effect</h2>
    <div class="field"><label for="hitEffect">Effect style</label><select id="hitEffect"><option value="ring">Impact ring</option><option value="flash">Color flash</option><option value="pop">Piece pop</option><option value="none">No effect</option></select></div>
    <div class="field"><label for="hitColor">Effect color</label><input id="hitColor" type="color" value="#ffcf4a"></div>
@@ -168,7 +179,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   const board=$('board');board.innerHTML='';const rows=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7],cols=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
   rows.forEach((r,ri)=>cols.forEach((c,ci)=>{const sq=squareName(r,c),p=game.get(sq),el=document.createElement('div');el.className='square '+((r+c)%2?'dark':'light');el.dataset.sq=sq;
    if(selected===sq)el.classList.add('selected');if(legal.some(m=>m.to===sq))el.classList.add(p?'capture':'legal');if(lastMove&&(lastMove.from===sq||lastMove.to===sq))el.classList.add('last');
-   if(p){const pieceEl=document.createElement('span');pieceEl.className='piece '+(p.color==='w'?'piece-white':'piece-black');pieceEl.textContent=pieces[p.color][p.type];pieceEl.dataset.piece=p.color+p.type;el.appendChild(pieceEl);el.draggable=true;el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',sq);select(sq);});}
+   if(p){const pieceEl=document.createElement('span');pieceEl.className='piece '+(p.color==='w'?'piece-white':'piece-black');pieceEl.textContent=pieces[p.color][p.type];pieceEl.dataset.piece=p.color+p.type;if($('googlyEyes').checked){const eyes=document.createElement('span');eyes.className='googly-eyes';eyes.setAttribute('aria-hidden','true');eyes.innerHTML='<span class="googly-eye"></span><span class="googly-eye"></span>';pieceEl.appendChild(eyes);}const accessory=$('accessorySelect').value;if(accessory!=='none'){const decoration=document.createElement('span');decoration.className='piece-accessory accessory-'+accessory;decoration.setAttribute('aria-hidden','true');pieceEl.appendChild(decoration);}el.appendChild(pieceEl);el.draggable=true;el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',sq);select(sq);});}
    if((!flipped&&ri===7)|| (flipped&&ri===7)){const co=document.createElement('span');co.className='coord';co.textContent=files[c];el.appendChild(co)}
    el.addEventListener('dragover',e=>e.preventDefault());el.addEventListener('drop',e=>{e.preventDefault();const from=e.dataTransfer.getData('text/plain');if(from)move(from,sq)});
    el.addEventListener('click',()=>clickSquare(sq));board.appendChild(el);
@@ -358,7 +369,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
  $('copyFen').onclick=()=>navigator.clipboard?.writeText(game.fen()).then(()=>$('status').textContent='FEN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
  $('copyPgn').onclick=()=>navigator.clipboard?.writeText(game.pgn()).then(()=>$('status').textContent='PGN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
    $('loadPgn').onclick=()=>{const g=new Chess();if(g.load_pgn($('pgn').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;resetPrediction();updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='PGN loaded.';}else $('status').textContent='Could not parse PGN.';};
- const styleDefaults={theme:'midnight',texture:'classic',shape:'square',pieceTexture:'classic',whitePieceColor:'#fffdf4',blackPieceColor:'#171717',hitEffect:'ring',hitColor:'#ffcf4a'};
+ const styleDefaults={theme:'midnight',texture:'classic',shape:'square',pieceTexture:'classic',whitePieceColor:'#fffdf4',blackPieceColor:'#171717',hitEffect:'ring',hitColor:'#ffcf4a',accessory:'none',googlyEyes:false};
  const styleDescriptions={
   midnight:'A cool dark board with a clean matte finish.',
   halloween:'Pumpkin-orange highlights, haunted purple panels and spooky night colors.',
@@ -376,7 +387,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
  };
  function applyStyle(){
   const theme=$('themeSelect').value,texture=$('textureSelect').value,shape=$('shapeSelect').value;
-  const pieceTexture=$('pieceTexture').value,whitePieceColor=$('whitePieceColor').value,blackPieceColor=$('blackPieceColor').value,hitEffect=$('hitEffect').value,hitColor=$('hitColor').value;
+  const pieceTexture=$('pieceTexture').value,whitePieceColor=$('whitePieceColor').value,blackPieceColor=$('blackPieceColor').value,hitEffect=$('hitEffect').value,hitColor=$('hitColor').value,accessory=$('accessorySelect').value,googlyEyes=$('googlyEyes').checked;
   document.body.dataset.theme=theme;
   $('board').className='board texture-'+texture+' shape-'+shape+' pieces-'+pieceTexture;
   document.documentElement.style.setProperty('--piece-white',whitePieceColor);
@@ -384,7 +395,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   document.documentElement.style.setProperty('--hit-color',hitColor);
   $('styleLabel').textContent=theme.toUpperCase().replace('MIDNIGHT','MIDNIGHT GLASS');
   $('styleDescription').textContent=styleDescriptions[theme]+' '+styleDescriptions[texture]+' '+styleDescriptions[shape];
-  try{localStorage.setItem('mateBrilliantStyle',JSON.stringify({theme,texture,shape,pieceTexture,whitePieceColor,blackPieceColor,hitEffect,hitColor}));}catch(e){}
+  try{localStorage.setItem('mateBrilliantStyle',JSON.stringify({theme,texture,shape,pieceTexture,whitePieceColor,blackPieceColor,hitEffect,hitColor,accessory,googlyEyes}));}catch(e){}
  }
  function loadStyle(){
   let saved=null;try{saved=JSON.parse(localStorage.getItem('mateBrilliantStyle')||'null');}catch(e){}
@@ -393,10 +404,13 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   if($('textureSelect').querySelector('option[value="'+v.texture+'"]'))$('textureSelect').value=v.texture;
   if($('shapeSelect').querySelector('option[value="'+v.shape+'"]'))$('shapeSelect').value=v.shape;
   ['pieceTexture','whitePieceColor','blackPieceColor','hitEffect','hitColor'].forEach(id=>{if(v[id]!==undefined)$(id).value=v[id];});
+  if($('accessorySelect').querySelector('option[value="'+v.accessory+'"]'))$('accessorySelect').value=v.accessory;
+  $('googlyEyes').checked=Boolean(v.googlyEyes);
   applyStyle();
  }
- ['themeSelect','textureSelect','shapeSelect','pieceTexture','whitePieceColor','blackPieceColor','hitEffect','hitColor'].forEach(id=>$(id).addEventListener('change',applyStyle));
- $('resetStyle').addEventListener('click',()=>{Object.entries(styleDefaults).forEach(([key,value])=>{const id=({theme:'themeSelect',texture:'textureSelect',shape:'shapeSelect'})[key]||key;$(id).value=value;});applyStyle();});
+ ['themeSelect','textureSelect','shapeSelect','pieceTexture','whitePieceColor','blackPieceColor','hitEffect','hitColor','accessorySelect','googlyEyes'].forEach(id=>$(id).addEventListener('change',()=>{applyStyle();render();}));
+ $('resetStyle').addEventListener('click',()=>{Object.entries(styleDefaults).forEach(([key,value])=>{const id=({theme:'themeSelect',texture:'textureSelect',shape:'shapeSelect',accessory:'accessorySelect'})[key]||key;if(key==='googlyEyes')$(id).checked=value;else $(id).value=value;});applyStyle();render();});
+ $('shakePieces').addEventListener('click',()=>{document.querySelectorAll('#board .piece').forEach(piece=>{piece.classList.remove('piece-shake-once');void piece.offsetWidth;piece.classList.add('piece-shake-once');setTimeout(()=>piece.classList.remove('piece-shake-once'),700);});});
   loadStyle();populateOpeningPicker();
   chooseSide('w');updateGambit();render();$('status').textContent='Ready. Choose your color, load a line, or analyze the current position.';
 })();

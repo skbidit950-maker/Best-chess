@@ -78,7 +78,8 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
 .move-list{max-height:150px;overflow:auto;font-family:ui-monospace,monospace;font-size:12px;color:#c2d1df;white-space:pre-wrap}
 .toggle{display:flex;align-items:center;gap:8px;color:#c6d4e3;font-size:13px}.toggle input{width:auto;accent-color:var(--accent)}
 .notice{background:#332b1c;border:1px solid #66532e;color:#e8d4a5;padding:10px 12px;border-radius:10px;font-size:12px;margin-top:12px}.sidepick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.sidepick button{padding:12px;border-radius:12px;background:#101a27;border:1px solid #33465c;transition:.2s}.sidepick button.active{border-color:var(--accent);background:linear-gradient(135deg,#1d4b40,#1a2b3b);box-shadow:0 0 0 1px #62d6a555,0 8px 24px #28c18a20}.sidepick button strong{display:block;font-size:15px}.sidepick button span{font-size:11px;color:var(--muted)}.focusline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:8px}.focusdot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-.status{font-size:12px;color:var(--muted);min-height:18px;margin-top:8px}
+ .status{font-size:12px;color:var(--muted);min-height:18px;margin-top:8px}
+.confidence-track{height:10px;background:#09111b;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:10px 0 7px}.confidence-fill{height:100%;width:0;background:linear-gradient(90deg,#e9b95d,#62d6a5);border-radius:inherit;transition:width .35s ease}
 @media(max-width:800px){.wrap{grid-template-columns:1fr;padding:8px 12px 28px}header{padding:17px 14px}.panel{padding:12px}.square{font-size:clamp(26px,9vw,48px)}}
 </style>
 </head>
@@ -94,17 +95,24 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button><button id="reset">Reset</button><button id="flip">Flip board</button><button id="analyze" class="primary">Analyze position</button>
  </div>
  <div class="status" id="status">Loading chess rules…</div>
- <div class="notice">Analysis is advisory, not 100% guaranteed. Choose White or Black to see the best move for that color; the engine treats your chosen side as the side to move next. This board analyzes positions you enter and does not connect to or automate moves on online chess sites.</div>
+ <div class="notice">Engine predictions are suggestions, not guarantees. Choose your color, load an opening or gambit, and make your move; the opponent prediction becomes available when it is their turn. This board analyzes positions you enter and does not connect to or automate moves on online chess sites.</div>
 </section>
 <aside class="panel">
- <div class="tabs"><button class="active" data-tab="analysis">Analysis</button><button data-tab="moves">Moves</button><button data-tab="position">Position</button><button data-tab="style">Style ✦</button></div>
+ <div class="tabs"><button class="active" data-tab="analysis">Analysis</button><button data-tab="moves">Moves</button><button data-tab="openings">Openings</button><button data-tab="position">Position</button><button data-tab="style">Style ✦</button></div>
  <section id="tab-analysis">
   <h2>Choose your side</h2>
-  <div class="sidepick"><button id="chooseWhite" class="active" type="button"><strong>♔ White</strong><span>Show best move for White</span></button><button id="chooseBlack" type="button"><strong>♚ Black</strong><span>Show best move for Black</span></button></div>
+  <div class="sidepick"><button id="chooseWhite" class="active" type="button"><strong>♔ White</strong><span>You play White</span></button><button id="chooseBlack" type="button"><strong>♚ Black</strong><span>You play Black</span></button></div>
   <div class="focusline"><i class="focusdot"></i><span id="focusLabel">Currently analyzing White</span></div>
   <h2>Engine recommendation</h2>
   <div class="metric"><div class="row space"><span class="muted">Evaluation</span><span class="tiny" id="depth">Depth —</span></div><div class="eval" id="eval">—</div><div class="tiny" id="evalNote">Analyze a position to get a recommendation.</div></div>
   <div class="metric"><div class="muted tiny">BEST MOVE</div><div class="best" id="bestMove">—</div><div class="tiny" id="bestLine">Best move arrow appears on the board.</div></div>
+  <div class="metric">
+   <div class="row space"><span class="muted tiny">PREDICTED OPPONENT MOVE</span><span id="predictionPercent" class="pill">—</span></div>
+   <div id="predictedMove" class="best" aria-live="polite" aria-atomic="true" style="margin-top:7px;font-size:18px">—</div>
+   <div id="predictionBar" class="confidence-track" role="progressbar" aria-label="Prediction confidence based on engine agreement" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="predictionFill" class="confidence-fill"></div></div>
+   <div id="predictionNote" class="tiny">Pick your side and make sure it is the opponent’s turn. The percentage measures agreement across search depths, not real-world odds.</div>
+   <div class="controls"><button id="predictMove" class="primary" type="button">Predict opponent move</button></div>
+  </div>
   <div class="row" style="margin:10px 0"><label class="toggle"><input id="mateMode" type="checkbox"> Find checkmate</label><label class="toggle"><input id="brilliantMode" type="checkbox"> Find brilliant moves</label></div>
   <div class="field"><label for="depthSelect">Analysis depth</label><select id="depthSelect"><option value="10">10 · Fast</option><option value="13" selected>13 · Balanced</option><option value="15">15 · Stronger</option><option value="17">17 · Slow</option></select></div>
   <div class="metric"><div class="muted tiny">MOVE QUALITY</div><div class="row" style="margin-top:8px"><button id="rateMove" type="button">Rate last move</button><span id="moveRating" class="pill">Not rated</span></div><div id="moveRatingNote" class="tiny" style="margin-top:7px">Play a move, then ask the engine whether it was best, reasonable, or a mistake.</div></div>
@@ -113,6 +121,13 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   <div class="tiny">Engine service: Stockfish Online API. Requires an internet connection. Board analysis uses the position entered here; it does not read other apps or live online games.</div>
  </section>
  <section id="tab-moves" hidden><h2>Move history</h2><div class="move-list" id="moveList">No moves yet.</div><div class="controls"><button id="copyPgn">Copy PGN</button></div></section>
+ <section id="tab-openings" hidden>
+  <h2>Choose an opening or gambit</h2>
+  <p class="tiny">Load a named line onto the board, choose your color, then predict the opponent’s reply when it is their turn.</p>
+  <div class="field"><label for="openingSelect">Opening / gambit line</label><select id="openingSelect"></select></div>
+  <div class="metric"><div class="muted tiny">SELECTED LINE</div><div id="openingLine" class="move-list" style="margin-top:8px">Choose a line to preview its moves.</div></div>
+  <div class="controls"><button id="loadOpening" class="primary" type="button">Load line on board</button></div>
+ </section>
  <section id="tab-position" hidden><h2>Position tools</h2>
   <div class="field"><label for="fen">FEN position</label><textarea id="fen" spellcheck="false"></textarea></div>
   <div class="controls"><button id="loadFen">Load FEN</button><button id="copyFen">Copy FEN</button></div>
@@ -218,21 +233,64 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   ["Englund Gambit: Soller Variation","d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+"],
   ["Blackburne Shilling Gambit","e4 e5 Nf3 Nc6 Bc4 Nd4 Nxe5 Qg5"],["Mikenas Gambit","c4 Nf6 Nc3 e6 e4"],
   ["Rousseau Gambit","e4 e5 Nf3 Nc6 Bc4 f5"]
- ].map(([name,line])=>({name,moves:line.split(" ").map(move=>move.replace(/[+#?!]+$/g,""))}));
+ ].map(([name,line])=>{const san=line.split(" ");return{name,san,moves:san.map(move=>move.replace(/[+#?!]+$/g,""))}});
  function updateGambit(){
   const history=game.history().map(move=>move.replace(/[+#?!]+$/g,""));
   const match=gambitOpenings.filter(opening=>history.length>=opening.moves.length&&opening.moves.every((move,index)=>history[index]===move)).sort((a,b)=>b.moves.length-a.moves.length)[0];
   $('gambitName').textContent=match?match.name:(history.length>=6?"No listed gambit detected":"Opening still developing");
   $('gambitNote').textContent=match?"Recognized from the move history on this board.":(history.length>=6?"No match in the built-in catalog of common named gambit lines.":"Play or load more opening moves. Gambits are identified from move history, not a camera image.");
  }
- function move(from,to){let result;const beforeFen=game.fen();try{result=game.move({from,to,promotion:'q'});}catch(e){result=null;}if(result){const captured=!!result.captured||String(result.flags||'').includes('e');lastMove={from,to};ratedMove={beforeFen,afterFen:game.fen(),san:result.san,color:result.color};$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Press “Rate last move” to compare it with the engine’s top choice.';selected=null;legal=[];redoStack=[];best=null;$('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Position changed. Analyze again.';updateGambit();render();if(captured)playHit(to);return true;}return false;}
+ function resetPrediction(note="Choose your side, then predict when the opponent is to move."){
+  $('predictedMove').textContent='—';$('predictionPercent').textContent='—';$('predictionFill').style.width='0%';$('predictionBar').setAttribute('aria-valuenow','0');$('predictionNote').textContent=note;
+ }
+ function formatOpeningLine(moves){return moves.map((move,index)=>(index%2===0?Math.floor(index/2)+1+'. ':'')+move).join(' ')}
+ function updateOpeningPreview(){
+  const opening=gambitOpenings[Number($('openingSelect').value)];
+  $('openingLine').textContent=opening?formatOpeningLine(opening.san):'Choose a line to preview its moves.';
+ }
+ function populateOpeningPicker(){
+  const picker=$('openingSelect');picker.innerHTML='';
+  gambitOpenings.forEach((opening,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=opening.name;picker.appendChild(option)});
+  updateOpeningPreview();
+ }
+ function loadSelectedOpening(){
+  const opening=gambitOpenings[Number($('openingSelect').value)];if(!opening)return;
+  const nextGame=new Chess();
+  for(const san of opening.san){if(!nextGame.move(san)){$('status').textContent='Could not load this line at move '+san+'.';return}}
+  game=nextGame;redoStack=[];selected=null;legal=[];ratedMove=null;best=null;
+  const last=game.history({verbose:true}).at(-1);lastMove=last?{from:last.from,to:last.to}:null;
+  $('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Opening loaded. Make your move, then predict the opponent’s reply.';
+  $('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';
+  resetPrediction();updateGambit();render();$('status').textContent=opening.name+' loaded. '+(game.turn()===(analysisSide==='w'?'b':'w')?'Predict the opponent’s move.':'It is your turn to move first.');
+ }
+ function move(from,to){let result;const beforeFen=game.fen();try{result=game.move({from,to,promotion:'q'});}catch(e){result=null;}if(result){resetPrediction();const captured=!!result.captured||String(result.flags||'').includes('e');lastMove={from,to};ratedMove={beforeFen,afterFen:game.fen(),san:result.san,color:result.color};$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Press “Rate last move” to compare it with the engine’s top choice.';selected=null;legal=[];redoStack=[];best=null;$('bestMove').textContent='—';$('eval').textContent='—';$('notes').textContent='Position changed. Analyze again.';updateGambit();render();if(captured)playHit(to);return true;}return false;}
  function drawArrow(){const svg=$('arrows');svg.innerHTML='';if(!best||!best.from||!best.to)return;const order=flipped?7:0;function xy(s){let f=files.indexOf(s[0]),rank=8-Number(s[1]);if(flipped){f=7-f;rank=7-rank;}return{x:(f+.5)*100,y:(rank+.5)*100};}const a=xy(best.from),b=xy(best.to);const ns='http://www.w3.org/2000/svg';const defs=document.createElementNS(ns,'defs'),marker=document.createElementNS(ns,'marker');marker.setAttribute('id','head');marker.setAttribute('markerWidth','7');marker.setAttribute('markerHeight','7');marker.setAttribute('refX','5');marker.setAttribute('refY','3');marker.setAttribute('orient','auto');const path=document.createElementNS(ns,'path');path.setAttribute('d','M0,0 L6,3 L0,6 Z');path.setAttribute('fill','#26b987');marker.appendChild(path);defs.appendChild(marker);svg.appendChild(defs);const line=document.createElementNS(ns,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke','#19a879');line.setAttribute('stroke-width','9');line.setAttribute('stroke-linecap','round');line.setAttribute('marker-end','url(#head)');line.setAttribute('opacity','.92');svg.appendChild(line);}
- function uciMove(uci){if(!uci||uci.length<4)return null;return{from:uci.slice(0,2),to:uci.slice(2,4)}}
+ function uciMove(uci){if(!uci||uci.length<4)return null;return{from:uci.slice(0,2),to:uci.slice(2,4),promotion:uci[4]||null}}
  async function enginePosition(fen,depth){
   const response=await fetch('https://stockfish.online/api/s/v2.php?fen='+encodeURIComponent(fen)+'&depth='+depth);
   if(!response.ok)throw new Error('Engine service returned HTTP '+response.status);
   const data=await response.json();if(!data.success)throw new Error(data.error||'Engine analysis failed');
   return{data,move:uciMove(String(data.bestmove||'').match(/([a-h][1-8][a-h][1-8][qrbn]?)/i)?.[1]),evaluation:Number(data.evaluation)};
+ }
+ async function predictOpponent(){
+  if(busy)return;
+  const opponent=analysisSide==='w'?'b':'w';
+  if(game.turn()!==opponent){resetPrediction('Make your move first. Prediction is available when '+(opponent==='w'?'White':'Black')+' is to move.');$('status').textContent='It is your turn; make a move before predicting the opponent.';return}
+  if(game.game_over()){resetPrediction('The game is over; there is no opponent move to predict.');return}
+  busy=true;$('predictMove').disabled=true;$('status').textContent='Predicting opponent move…';$('predictionNote').textContent='Comparing Stockfish’s top move at several search depths…';
+  try{
+   const selectedDepth=Math.min(15,Number($('depthSelect').value)),depths=[Math.max(8,selectedDepth-4),selectedDepth,Math.min(15,selectedDepth+2)].filter((depth,index,array)=>array.indexOf(depth)===index);
+   const results=await Promise.all(depths.map(depth=>enginePosition(game.fen(),depth))),ranked=results.filter(result=>result.move);
+   if(!ranked.length)throw new Error('The engine did not return a legal move.');
+   const key=move=>move.from+move.to+(move.promotion||''),chosen=ranked[ranked.length-1],legalMove=game.moves({verbose:true}).find(move=>key(move)===key(chosen.move));
+   if(!legalMove)throw new Error('The predicted move was not legal in this position.');
+   const agreements=ranked.filter(result=>key(result.move)===key(chosen.move)).length,confidence=Math.round(agreements/ranked.length*100);
+   best=chosen.move;drawArrow();$('predictedMove').textContent=(opponent==='w'?'White: ':'Black: ')+legalMove.san+' · '+legalMove.from.toUpperCase()+' → '+legalMove.to.toUpperCase();
+   $('predictionPercent').textContent=confidence+'%';$('predictionFill').style.width=confidence+'%';$('predictionBar').setAttribute('aria-valuenow',String(confidence));
+   $('predictionNote').textContent='Top move agreed at '+agreements+' of '+ranked.length+' searches (depths '+depths.join(', ')+'). This measures engine stability, not real-world odds.';
+   $('status').textContent='Opponent prediction ready; arrow shows the highest-depth move.';
+  }catch(error){resetPrediction('Prediction unavailable: '+error.message+' Try again when the engine is available.');$('status').textContent='Could not predict the opponent’s move.';}
+  finally{busy=false;$('predictMove').disabled=false;}
  }
  async function rateLastMove(){
   if(busy)return;if(!ratedMove){$('moveRatingNote').textContent='Play a move first, then rate it.';return;}
@@ -249,7 +307,7 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   finally{busy=false;$('rateMove').disabled=false;}
  }
  async function analyze(){
-  if(busy)return;busy=true;$('analyze').disabled=true;$('status').textContent='Analyzing position…';$('notes').textContent='Contacting Stockfish engine…';
+  if(busy)return;resetPrediction();busy=true;$('analyze').disabled=true;$('status').textContent='Analyzing position…';$('notes').textContent='Contacting Stockfish engine…';
   const depth=Number($('depthSelect').value),parts=game.fen().split(' ');parts[1]=analysisSide;parts[3]='-';const fen=parts.join(' ');
   try{
    const url='https://stockfish.online/api/s/v2.php?fen='+encodeURIComponent(fen)+'&depth='+depth;
@@ -275,28 +333,31 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
   analysisSide=side;
   $('chooseWhite').classList.toggle('active',side==='w');
   $('chooseBlack').classList.toggle('active',side==='b');
-  $('focusLabel').textContent='Currently analyzing '+(side==='w'?'White':'Black');
+  $('focusLabel').textContent='You play '+(side==='w'?'White':'Black');
   flipped=side==='b';
   $('orientation').textContent=flipped?'Black view':'White view';
-  best=null;drawArrow();
+  best=null;drawArrow();resetPrediction();
   $('bestMove').textContent='—';$('eval').textContent='—';
-  $('notes').textContent='Side changed. Analyze to get the best move for '+(side==='w'?'White':'Black')+'.';
-  $('status').textContent='Selected '+(side==='w'?'White':'Black')+'. The engine will recommend moves for this color only.';
+  $('notes').textContent='Side changed. Analyze your position or predict the opponent when it is their turn.';
+  $('status').textContent='You play '+(side==='w'?'White':'Black')+'.';
   render();
  }
  $('chooseWhite').addEventListener('click',()=>chooseSide('w'));
- $('chooseBlack').addEventListener('click',()=>chooseSide('b'));
- $('analyze').addEventListener('click',analyze);
- $('rateMove').addEventListener('click',rateLastMove);
- $('undo').onclick=()=>{const m=game.undo();if(m){redoStack.push(m);lastMove=null;ratedMove=null;best=null;$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';updateGambit();render();$('status').textContent='Move undone. Analyze again for this position.'}};
- $('redo').onclick=()=>{const m=redoStack.pop();if(m){game.move(m);lastMove=m;best=null;render();}};
- $('reset').onclick=()=>{game.reset();redoStack=[];lastMove=null;ratedMove=null;best=null;selected=null;legal=[];$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';$('eval').textContent='—';$('bestMove').textContent='—';$('notes').textContent='No analysis yet.';updateGambit();$('status').textContent='Starting position restored.';render();};
+  $('chooseBlack').addEventListener('click',()=>chooseSide('b'));
+  $('analyze').addEventListener('click',analyze);
+  $('predictMove').addEventListener('click',predictOpponent);
+  $('rateMove').addEventListener('click',rateLastMove);
+  $('openingSelect').addEventListener('change',updateOpeningPreview);
+  $('loadOpening').addEventListener('click',loadSelectedOpening);
+  $('undo').onclick=()=>{const m=game.undo();if(m){redoStack.push(m);lastMove=null;ratedMove=null;best=null;resetPrediction();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';updateGambit();render();$('status').textContent='Move undone. Analyze again for this position.'}};
+  $('redo').onclick=()=>{const m=redoStack.pop();if(m){game.move(m);lastMove={from:m.from,to:m.to};best=null;resetPrediction();updateGambit();render();}};
+  $('reset').onclick=()=>{game.reset();redoStack=[];lastMove=null;ratedMove=null;best=null;selected=null;legal=[];resetPrediction();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';$('eval').textContent='—';$('bestMove').textContent='—';$('notes').textContent='No analysis yet.';updateGambit();$('status').textContent='Starting position restored.';render();};
  $('flip').onclick=()=>{flipped=!flipped;$('orientation').textContent=flipped?'Black view':'White view';render();};
- document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['analysis','moves','position','style'].forEach(t=>$( 'tab-'+t).hidden=t!==b.dataset.tab);});
- $('loadFen').onclick=()=>{const g=new Chess();if(g.load($('fen').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='FEN loaded.';}else $('status').textContent='Invalid FEN position.';};
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['analysis','moves','openings','position','style'].forEach(t=>$( 'tab-'+t).hidden=t!==b.dataset.tab);});
+   $('loadFen').onclick=()=>{const g=new Chess();if(g.load($('fen').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;resetPrediction();updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='FEN loaded.';}else $('status').textContent='Invalid FEN position.';};
  $('copyFen').onclick=()=>navigator.clipboard?.writeText(game.fen()).then(()=>$('status').textContent='FEN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
  $('copyPgn').onclick=()=>navigator.clipboard?.writeText(game.pgn()).then(()=>$('status').textContent='PGN copied.').catch(()=>$('status').textContent='Clipboard unavailable.');
- $('loadPgn').onclick=()=>{const g=new Chess();if(g.load_pgn($('pgn').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='PGN loaded.';}else $('status').textContent='Could not parse PGN.';};
+   $('loadPgn').onclick=()=>{const g=new Chess();if(g.load_pgn($('pgn').value.trim())){game=g;redoStack=[];lastMove=null;ratedMove=null;best=null;resetPrediction();updateGambit();$('moveRating').textContent='Not rated';$('moveRatingNote').textContent='Play a move, then rate it.';render();$('status').textContent='PGN loaded.';}else $('status').textContent='Could not parse PGN.';};
  const styleDefaults={theme:'midnight',texture:'classic',shape:'square',pieceTexture:'classic',whitePieceColor:'#fffdf4',blackPieceColor:'#171717',hitEffect:'ring',hitColor:'#ffcf4a'};
  const styleDescriptions={
   midnight:'A cool dark board with a clean matte finish.',
@@ -336,8 +397,8 @@ textarea{min-height:74px;resize:vertical}.field{margin:10px 0}.field label{displ
  }
  ['themeSelect','textureSelect','shapeSelect','pieceTexture','whitePieceColor','blackPieceColor','hitEffect','hitColor'].forEach(id=>$(id).addEventListener('change',applyStyle));
  $('resetStyle').addEventListener('click',()=>{Object.entries(styleDefaults).forEach(([key,value])=>{const id=({theme:'themeSelect',texture:'textureSelect',shape:'shapeSelect'})[key]||key;$(id).value=value;});applyStyle();});
- loadStyle();
- chooseSide('w');updateGambit();render();$('status').textContent='Ready. Choose White or Black, then analyze the position.';
+  loadStyle();populateOpeningPicker();
+  chooseSide('w');updateGambit();render();$('status').textContent='Ready. Choose your color, load a line, or analyze the current position.';
 })();
 </script>
 </body>
